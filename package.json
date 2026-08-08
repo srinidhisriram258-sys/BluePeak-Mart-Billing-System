@@ -1,0 +1,22 @@
+{
+  "name": "premium-billing-system",
+  "version": "1.0.0",
+  "description": "Full-Stack Premium Billing Management System with 3D Glassmorphism UI and Express/MySQL Backend",
+  "main": "backend/app.js",
+  "scripts": {
+    "start": "cd backend && npm install && npm start",
+    "dev": "cd backend && npm run dev",
+    "init-db": "cd backend && npm run init-db",
+    "seed": "cd backend && npm run seed"
+  },
+  "keywords": [
+    "billing",
+    "invoice",
+    "express",
+    "mysql",
+    "glassmorphism",
+    "saas"
+  ],
+  "author": "CloudBill Team",
+  "license": "MIT"
+}

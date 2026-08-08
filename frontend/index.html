@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BluePeak Mart - Smart Retail & POS Billing System</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient 3D Glowing Background Canvas -->
+  <canvas id="bgCanvas"></canvas>
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-3d">
+          <i class="fa-solid fa-store"></i>
+        </div>
+        <div class="brand-text">
+          <h2>BluePeak <span>Mart</span></h2>
+          <span class="brand-badge">Smart Retail POS</span>
+        </div>
+      </div>
+
+      <div class="store-location-info">
+        <i class="fa-solid fa-location-dot"></i> Avadi, Chennai, TN
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- 1. POS Billing (DEFAULT CASHIER HOME SCREEN) -->
+        <button class="nav-item active" data-view="pos">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <span>POS Billing</span>
+          <span class="badge-shortcut">F2</span>
+        </button>
+
+        <div class="nav-section-label">OWNER / ADMIN</div>
+
+        <!-- 2. Admin Protected Navigation -->
+        <button class="nav-item owner-protected" data-view="dashboard">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Dashboard</span>
+          <i class="fa-solid fa-lock lock-icon"></i>
+        </button>
+        <button class="nav-item owner-protected" data-view="products">
+          <i class="fa-solid fa-box-open"></i>
+          <span>Products</span>
+          <i class="fa-solid fa-lock lock-icon"></i>
+        </button>
+        <button class="nav-item owner-protected" data-view="customers">
+          <i class="fa-solid fa-users"></i>
+          <span>Customers</span>
+          <i class="fa-solid fa-lock lock-icon"></i>
+        </button>
+        <button class="nav-item owner-protected" data-view="history">
+          <i class="fa-solid fa-receipt"></i>
+          <span>Billing History</span>
+          <i class="fa-solid fa-lock lock-icon"></i>
+        </button>
+        <button class="nav-item owner-protected" data-view="settings">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Settings</span>
+          <i class="fa-solid fa-lock lock-icon"></i>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-status-card" id="dbStatusBadge">
+          <div class="status-indicator warning"></div>
+          <div class="db-info">
+            <span class="db-label">Database</span>
+            <span class="db-state" id="dbStatusText">Checking...</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="mobile-toggle" id="mobileMenuBtn">
+          <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <div class="header-brand-title">
+          <div class="store-tagline">
+            <h1>BluePeak Mart <span class="tag-sub">• Smart Retail • Faster Billing</span></h1>
+            <p>Avadi, Chennai, Tamil Nadu | Ph: 8237828998</p>
+          </div>
+        </div>
+
+        <!-- POS Keyboard Shortcuts Ribbon -->
+        <div class="shortcuts-ribbon">
+          <span class="shortcut-pill" onclick="focusBarcodeScanner()"><kbd>F2</kbd> Search / Scan</span>
+          <span class="shortcut-pill" onclick="openPaymentModal()"><kbd>F4</kbd> Checkout</span>
+          <span class="shortcut-pill" onclick="clearPosCart()"><kbd>F8</kbd> Clear Cart</span>
+        </div>
+
+        <div class="header-actions">
+          <div class="datetime-pill" id="liveClock">
+            <i class="fa-regular fa-clock"></i>
+            <span id="clockText">--:--:--</span>
+          </div>
+
+          <!-- User Role & Owner Login Status -->
+          <div class="profile-chip" id="userSessionChip">
+            <div class="avatar" id="userAvatar">
+              <i class="fa-solid fa-user-tag"></i>
+            </div>
+            <div class="profile-info">
+              <span class="profile-name" id="userNameDisplay">Cashier Counter</span>
+              <span class="profile-role" id="userRoleDisplay">Cashier Mode</span>
+            </div>
+            <button class="btn btn-sm btn-ghost ml-2" id="ownerAuthBtn" onclick="toggleOwnerAuth()">
+              <i class="fa-solid fa-key"></i> <span id="ownerAuthBtnText">Owner Login</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEW CONTAINERS -->
+      <div class="content-body">
+        
+        <!-- ========================================================= -->
+        <!-- 1. POS BILLING SCREEN (MAIN DEFAULT CASHIER HOME SCREEN) -->
+        <!-- ========================================================= -->
+        <section class="view-section active" id="view-pos">
+          <div class="pos-layout">
+            <!-- LEFT COLUMN: Product Catalog & Barcode Scanner -->
+            <div class="pos-catalog-panel glass-panel">
+              <!-- Barcode / SKU Scanner Bar -->
+              <div class="scanner-bar">
+                <div class="scanner-input-group">
+                  <i class="fa-solid fa-barcode scanner-icon"></i>
+                  <input type="text" id="posBarcodeScanner" class="form-control" placeholder="Scan Barcode / SKU (e.g. 8901234000001 or BPM-GRC-0001)..." autocomplete="off">
+                  <button class="btn btn-primary glow-btn" id="btnScanBarcode" type="button">
+                    <i class="fa-solid fa-magnifying-glass"></i> Scan
+                  </button>
+                  <button class="btn btn-secondary" id="btnCameraScan" type="button" title="Camera scanner ready">
+                    <i class="fa-solid fa-camera"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Product Filter & Category Pills -->
+              <div class="pos-filter-bar">
+                <div class="search-box">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="posProductSearch" placeholder="Search 500+ items by product name, SKU, or category...">
+                </div>
+                <div class="category-pills" id="posCategoryPills">
+                  <button class="cat-pill active" data-category="All">All Items (500)</button>
+                </div>
+              </div>
+
+              <!-- Products Grid -->
+              <div class="pos-products-grid" id="posProductsContainer">
+                <!-- Dynamically populated product cards -->
+              </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Current Bill / Cart & Checkout -->
+            <div class="pos-cart-panel glass-panel">
+              <div class="cart-header flex-between">
+                <h3><i class="fa-solid fa-receipt text-cyan"></i> Current Bill</h3>
+                <button class="btn btn-sm btn-ghost" onclick="openAddCustomerModal()">
+                  <i class="fa-solid fa-user-plus"></i> Customer
+                </button>
+              </div>
+
+              <!-- Customer Selector -->
+              <div class="cart-customer-selector">
+                <select id="posCustomerSelect" class="form-control">
+                  <option value="">-- Walk-in / Select Customer --</option>
+                </select>
+              </div>
+
+              <!-- Cart Line Items Table -->
+              <div class="cart-table-wrapper">
+                <table class="custom-table cart-table" id="posCartTable">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Price</th>
+                      <th>Qty</th>
+                      <th>Total</th>
+                      <th class="text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="posCartBody">
+                    <tr class="empty-cart-row">
+                      <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-basket-shopping fa-3x mb-3 text-dim"></i>
+                        <p>Cart is empty. Scan barcode or tap products on left to add.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Cart Calculation Breakdown -->
+              <div class="cart-summary-box">
+                <div class="summary-line">
+                  <span>Subtotal</span>
+                  <span class="amount" id="posSubtotal">₹0.00</span>
+                </div>
+
+                <div class="summary-line form-inline-line">
+                  <label for="posDiscount">Discount (₹)</label>
+                  <input type="number" id="posDiscount" class="form-control sm-input" value="0.00" min="0" step="1">
+                </div>
+
+                <div class="summary-line form-inline-line">
+                  <label for="posGstPercent">GST Tax (%)</label>
+                  <div class="gst-input-group">
+                    <input type="number" id="posGstPercent" class="form-control sm-input" value="18" min="0" step="1">
+                    <span class="gst-calc-amount" id="posGstAmount">(₹0.00)</span>
+                  </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- GRAND TOTAL VISUAL PRIORITY BANNER -->
+                <div class="summary-line grand-total-line highlight-banner">
+                  <span>GRAND TOTAL</span>
+                  <span class="amount highlight-cyan" id="posGrandTotal">₹0.00</span>
+                </div>
+
+                <!-- POS Cart Actions -->
+                <div class="pos-cart-actions">
+                  <button class="btn btn-ghost" onclick="clearPosCart()" title="Clear Current Cart (F8)">
+                    <i class="fa-solid fa-trash-can"></i> Clear (F8)
+                  </button>
+                  <button class="btn btn-success btn-lg glow-btn-green flex-1" onclick="openPaymentModal()" title="Open Payment Checkout (F4)">
+                    <i class="fa-solid fa-cash-register"></i> PAY / CHECKOUT (F4)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- 2. OWNER ADMIN DASHBOARD VIEW (PROTECTED) -->
+        <!-- ========================================================= -->
+        <section class="view-section" id="view-dashboard">
+          <div class="stats-grid">
+            <div class="stat-card glass-3d">
+              <div class="stat-icon cyan"><i class="fa-solid fa-wallet"></i></div>
+              <div class="stat-content">
+                <span class="stat-label">Total Revenue</span>
+                <h3 class="stat-value" id="statTotalSales">₹0.00</h3>
+                <span class="stat-trend positive"><i class="fa-solid fa-arrow-trend-up"></i> Lifetime sales</span>
+              </div>
+            </div>
+
+            <div class="stat-card glass-3d">
+              <div class="stat-icon blue"><i class="fa-solid fa-file-invoice"></i></div>
+              <div class="stat-content">
+                <span class="stat-label">Total Invoices</span>
+                <h3 class="stat-value" id="statTotalBills">0</h3>
+                <span class="stat-sub">Generated to date</span>
+              </div>
+            </div>
+
+            <div class="stat-card glass-3d">
+              <div class="stat-icon purple"><i class="fa-solid fa-boxes-stacked"></i></div>
+              <div class="stat-content">
+                <span class="stat-label">Products Catalog</span>
+                <h3 class="stat-value" id="statTotalProducts">500</h3>
+                <span class="stat-sub">Active items</span>
+              </div>
+            </div>
+
+            <div class="stat-card glass-3d">
+              <div class="stat-icon emerald"><i class="fa-solid fa-user-group"></i></div>
+              <div class="stat-content">
+                <span class="stat-label">Total Customers</span>
+                <h3 class="stat-value" id="statTotalCustomers">0</h3>
+                <span class="stat-sub">Registered accounts</span>
+              </div>
+            </div>
+
+            <div class="stat-card glass-3d highlight-card">
+              <div class="stat-icon gold"><i class="fa-solid fa-bolt"></i></div>
+              <div class="stat-content">
+                <span class="stat-label">Today's Revenue</span>
+                <h3 class="stat-value" id="statTodaySales">₹0.00</h3>
+                <span class="stat-trend positive"><i class="fa-solid fa-circle-check"></i> Today</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="charts-row">
+            <div class="panel-card glass-panel chart-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-chart-line"></i> Payment Methods Breakdown</h3>
+              </div>
+              <div class="chart-container">
+                <canvas id="paymentChart"></canvas>
+              </div>
+            </div>
+
+            <div class="panel-card glass-panel chart-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-chart-column"></i> Top Selling Products</h3>
+              </div>
+              <div class="chart-container">
+                <canvas id="topProductsChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Low Stock & Recent Bills Grid -->
+          <div class="dashboard-tables-grid">
+            <div class="panel-card glass-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-triangle-exclamation text-warning"></i> Low Stock Alerts</h3>
+                <span class="badge warning-badge" id="lowStockBadge">0 items</span>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table" id="lowStockTable">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th>Price</th>
+                      <th>Stock Remaining</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="5" class="text-center py-3">Loading low stock data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel-card glass-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Invoices</h3>
+                <button class="btn btn-sm btn-ghost" onclick="switchView('history')">View All</button>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table" id="recentBillsTable">
+                  <thead>
+                    <tr>
+                      <th>Invoice #</th>
+                      <th>Customer</th>
+                      <th>Amount</th>
+                      <th>Method</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="5" class="text-center py-3">Loading recent bills...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- 3. PRODUCTS MANAGEMENT VIEW (PROTECTED) -->
+        <!-- ========================================================= -->
+        <section class="view-section" id="view-products">
+          <div class="panel-card glass-panel">
+            <div class="panel-header flex-between">
+              <div class="header-left">
+                <h3><i class="fa-solid fa-box"></i> Product Inventory (500 Items)</h3>
+                <p class="text-muted">Manage retail items, barcodes, pricing, and stock levels</p>
+              </div>
+              <button class="btn btn-primary glow-btn" onclick="openAddProductModal()">
+                <i class="fa-solid fa-plus"></i> Add New Product
+              </button>
+            </div>
+
+            <div class="filter-bar">
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="productSearchInput" placeholder="Search product by name, SKU, or barcode...">
+              </div>
+              <div class="filter-dropdown">
+                <select id="productCategoryFilter" class="form-control">
+                  <option value="All">All Categories</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="products-grid" id="productsGridContainer">
+              <!-- Dynamically populated product cards -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- 4. CUSTOMERS MANAGEMENT VIEW (PROTECTED) -->
+        <!-- ========================================================= -->
+        <section class="view-section" id="view-customers">
+          <div class="panel-card glass-panel">
+            <div class="panel-header flex-between">
+              <div class="header-left">
+                <h3><i class="fa-solid fa-users"></i> Customer Management</h3>
+                <p class="text-muted">Registered clients and order tracking</p>
+              </div>
+              <button class="btn btn-primary glow-btn" onclick="openAddCustomerModal()">
+                <i class="fa-solid fa-user-plus"></i> Add New Customer
+              </button>
+            </div>
+
+            <div class="filter-bar">
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="customerSearchInput" placeholder="Search customer by name, phone, or email...">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table" id="customersTable">
+                <thead>
+                  <tr>
+                    <th>#ID</th>
+                    <th>Customer Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Address</th>
+                    <th>Joined Date</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="customersTableBody">
+                  <tr><td colspan="7" class="text-center py-4">Loading customers...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- 5. BILLING HISTORY VIEW (PROTECTED) -->
+        <!-- ========================================================= -->
+        <section class="view-section" id="view-history">
+          <div class="panel-card glass-panel">
+            <div class="panel-header flex-between">
+              <div class="header-left">
+                <h3><i class="fa-solid fa-receipt"></i> Invoice Ledger & Audit History</h3>
+                <p class="text-muted">Search, print, and review completed sales transactions</p>
+              </div>
+            </div>
+
+            <div class="filter-bar">
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="historySearchInput" placeholder="Search by Invoice # or Customer name...">
+              </div>
+              <div class="filter-dropdown">
+                <select id="historyPaymentFilter" class="form-control">
+                  <option value="All">All Payment Methods</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Card">Card</option>
+                  <option value="UPI">UPI</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table" id="historyTable">
+                <thead>
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Subtotal</th>
+                    <th>Discount</th>
+                    <th>GST</th>
+                    <th>Grand Total</th>
+                    <th>Method</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <tr><td colspan="9" class="text-center py-4">Loading invoice records...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- 6. SETTINGS VIEW (PROTECTED) -->
+        <!-- ========================================================= -->
+        <section class="view-section" id="view-settings">
+          <div class="settings-grid">
+            <div class="panel-card glass-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-building"></i> BluePeak Mart Branding</h3>
+              </div>
+              <form id="settingsForm">
+                <div class="form-group">
+                  <label>Business Name</label>
+                  <input type="text" class="form-control" id="settStoreName" value="BluePeak Mart">
+                </div>
+                <div class="form-group">
+                  <label>Tagline</label>
+                  <input type="text" class="form-control" id="settStoreTagline" value="Smart Retail • Faster Billing • Better Shopping">
+                </div>
+                <div class="form-group">
+                  <label>GSTIN / Tax ID Number</label>
+                  <input type="text" class="form-control" id="settStoreGst" value="33AAACB9876C1ZB">
+                </div>
+                <div class="form-group">
+                  <label>Phone Contact</label>
+                  <input type="text" class="form-control" id="settStorePhone" value="8237828998">
+                </div>
+                <div class="form-group">
+                  <label>Store Address</label>
+                  <textarea class="form-control" id="settStoreAddress" rows="2">Avadi, Chennai, Tamil Nadu</textarea>
+                </div>
+                <div class="form-group">
+                  <label>Default GST Tax Rate (%)</label>
+                  <input type="number" class="form-control" id="settDefaultGst" value="18">
+                </div>
+                <button type="submit" class="btn btn-primary glow-btn mt-2">
+                  <i class="fa-solid fa-floppy-disk"></i> Save Branding Settings
+                </button>
+              </form>
+            </div>
+
+            <div class="panel-card glass-panel">
+              <div class="panel-header">
+                <h3><i class="fa-solid fa-server"></i> System Diagnostics</h3>
+              </div>
+              <div class="diagnostics-box">
+                <div class="diag-item">
+                  <span class="diag-label">Backend API Server:</span>
+                  <span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> ONLINE (Port 5000)</span>
+                </div>
+                <div class="diag-item">
+                  <span class="diag-label">MySQL Database:</span>
+                  <span id="settDbBadge" class="badge badge-warning">Testing...</span>
+                </div>
+                <div class="diag-item">
+                  <span class="diag-label">Database Host:</span>
+                  <span class="text-mono" id="settDbHost">localhost:3306</span>
+                </div>
+              </div>
+              <button class="btn btn-secondary mt-3" onclick="testDatabaseConnection()">
+                <i class="fa-solid fa-rotate"></i> Re-test Connection
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL DIALOGS -->
+  <!-- ========================================================= -->
+
+  <!-- PAYMENT & CHECKOUT MODAL -->
+  <div class="modal-backdrop" id="paymentModal">
+    <div class="modal-card glass-modal modal-md">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-credit-card text-cyan"></i> POS Payment Checkout</h3>
+        <button class="close-btn" onclick="closeModal('paymentModal')">&times;</button>
+      </div>
+
+      <div class="payment-modal-body">
+        <div class="pay-total-banner">
+          <span>Amount Payable</span>
+          <h2 class="pay-total-amount" id="payModalGrandTotal">₹0.00</h2>
+        </div>
+
+        <!-- Payment Method Tabs -->
+        <div class="payment-tabs">
+          <button class="pay-tab active" data-method="Cash" onclick="selectPayMethod('Cash')">
+            <i class="fa-solid fa-money-bill-wave"></i> Cash
+          </button>
+          <button class="pay-tab" data-method="UPI" onclick="selectPayMethod('UPI')">
+            <i class="fa-solid fa-qrcode"></i> UPI / GPay
+          </button>
+          <button class="pay-tab" data-method="Card" onclick="selectPayMethod('Card')">
+            <i class="fa-solid fa-credit-card"></i> Card
+          </button>
+        </div>
+
+        <!-- CASH METHOD WORKFLOW -->
+        <div class="pay-method-content active" id="payMethodCash">
+          <div class="form-group mt-3">
+            <label><i class="fa-solid fa-hand-holding-dollar"></i> Amount Received (₹)</label>
+            <input type="number" id="payAmountReceived" class="form-control lg-input" placeholder="0.00" step="1" min="0">
+          </div>
+
+          <!-- Cash Presets in INR -->
+          <div class="cash-presets-row">
+            <button class="preset-btn" onclick="setCashPreset('exact')">Exact</button>
+            <button class="preset-btn" onclick="setCashPreset(100)">₹100</button>
+            <button class="preset-btn" onclick="setCashPreset(500)">₹500</button>
+            <button class="preset-btn" onclick="setCashPreset(2000)">₹2000</button>
+          </div>
+
+          <div class="change-display-box" id="payChangeBox">
+            <span class="change-label">Change to Return</span>
+            <span class="change-amount" id="payChangeAmount">₹0.00</span>
+          </div>
+
+          <div id="cashAlertBadge" class="badge-alert-info">Enter amount received to calculate change</div>
+        </div>
+
+        <!-- UPI METHOD WORKFLOW -->
+        <div class="pay-method-content" id="payMethodUPI">
+          <div class="upi-box text-center py-4">
+            <div class="qr-placeholder mb-3">
+              <i class="fa-solid fa-qrcode fa-5x text-cyan"></i>
+            </div>
+            <p class="text-muted">Scan GPay / PhonePe / Paytm QR Code</p>
+            <div class="status-toggle-box mt-3">
+              <span class="mr-2">Payment Status:</span>
+              <span class="badge badge-success" id="upiStatusBadge"><i class="fa-solid fa-check"></i> READY FOR RECEIPT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD METHOD WORKFLOW -->
+        <div class="pay-method-content" id="payMethodCard">
+          <div class="card-box text-center py-4">
+            <i class="fa-solid fa-credit-card fa-4x text-cyan mb-3"></i>
+            <p class="text-muted">Swipe or Tap Card on Card Reader Terminal</p>
+            <div class="status-toggle-box mt-3">
+              <span class="mr-2">POS Terminal:</span>
+              <span class="badge badge-success"><i class="fa-solid fa-wifi"></i> CONNECTED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('paymentModal')">Cancel</button>
+        <button type="button" class="btn btn-success glow-btn-green" id="btnConfirmCheckout" onclick="processPosCheckout()">
+          <i class="fa-solid fa-circle-check"></i> Complete Payment & Print
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER ADMIN LOGIN MODAL -->
+  <div class="modal-backdrop" id="ownerLoginModal">
+    <div class="modal-card glass-modal modal-sm">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-shield text-cyan"></i> Owner / Admin Login</h3>
+        <button class="close-btn" onclick="closeModal('ownerLoginModal')">&times;</button>
+      </div>
+      <form id="ownerLoginForm">
+        <p class="text-muted text-sm mb-3">Enter store owner credentials to access administrative views.</p>
+        <div class="form-group">
+          <label>Admin Username</label>
+          <input type="text" id="ownerUsernameInput" class="form-control" placeholder="admin" required>
+        </div>
+        <div class="form-group">
+          <label>Admin Password</label>
+          <input type="password" id="ownerPasswordInput" class="form-control" placeholder="••••••••" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('ownerLoginModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary glow-btn">Authenticate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PRODUCT MODAL (ADD / EDIT) -->
+  <div class="modal-backdrop" id="productModal">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <h3 id="productModalTitle"><i class="fa-solid fa-box"></i> Add New Product</h3>
+        <button class="close-btn" onclick="closeModal('productModal')">&times;</button>
+      </div>
+      <form id="productForm">
+        <input type="hidden" id="pmProductId">
+        <div class="form-group">
+          <label>Product Name *</label>
+          <input type="text" id="pmName" class="form-control" required placeholder="e.g. Aashirvaad Whole Wheat Atta 5kg">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Category *</label>
+            <input type="text" id="pmCategory" class="form-control" required placeholder="Grocery, Beverages..." list="categorySuggestions">
+            <datalist id="categorySuggestions">
+              <option value="Grocery & Food">
+              <option value="Beverages">
+              <option value="Personal Care">
+              <option value="Home & Cleaning">
+              <option value="Stationery">
+              <option value="Snacks & Chocolates">
+              <option value="Baby Care">
+              <option value="Electronics & Accessories">
+              <option value="Kitchen & Household">
+            </datalist>
+          </div>
+          <div class="form-group flex-1">
+            <label>SKU *</label>
+            <input type="text" id="pmSku" class="form-control" placeholder="BPM-GRC-0001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Barcode *</label>
+            <input type="text" id="pmBarcode" class="form-control" placeholder="8901234000001">
+          </div>
+          <div class="form-group flex-1">
+            <label>Unit Price (₹) *</label>
+            <input type="number" id="pmPrice" class="form-control" step="0.01" min="0" required placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>GST Tax (%) *</label>
+            <input type="number" id="pmGstPercent" class="form-control" step="0.01" min="0" value="18">
+          </div>
+          <div class="form-group flex-1">
+            <label>Stock Quantity *</label>
+            <input type="number" id="pmStock" class="form-control" min="0" required placeholder="50">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('productModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary glow-btn">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CUSTOMER MODAL (ADD / EDIT) -->
+  <div class="modal-backdrop" id="customerModal">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <h3 id="customerModalTitle"><i class="fa-solid fa-user-plus"></i> Add New Customer</h3>
+        <button class="close-btn" onclick="closeModal('customerModal')">&times;</button>
+      </div>
+      <form id="customerForm">
+        <input type="hidden" id="cmCustomerId">
+        <div class="form-group">
+          <label>Customer Full Name *</label>
+          <input type="text" id="cmName" class="form-control" required placeholder="e.g. Karthik Subramanian">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Phone Number *</label>
+            <input type="text" id="cmPhone" class="form-control" required placeholder="+91 98401 23456">
+          </div>
+          <div class="form-group flex-1">
+            <label>Email Address</label>
+            <input type="email" id="cmEmail" class="form-control" placeholder="client@gmail.com">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Billing Address</label>
+          <textarea id="cmAddress" class="form-control" rows="2" placeholder="Avadi, Chennai, Tamil Nadu"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('customerModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary glow-btn">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PRINTABLE INVOICE RECEIPT MODAL -->
+  <div class="modal-backdrop" id="invoiceViewModal">
+    <div class="modal-card glass-modal modal-lg">
+      <div class="modal-header no-print">
+        <h3><i class="fa-solid fa-print"></i> BluePeak Mart Tax Invoice Receipt</h3>
+        <div class="flex-actions">
+          <button class="btn btn-primary glow-btn" onclick="window.print()">
+            <i class="fa-solid fa-print"></i> Print Receipt / Export PDF
+          </button>
+          <button class="close-btn" onclick="closeModal('invoiceViewModal')">&times;</button>
+        </div>
+      </div>
+      
+      <!-- Printable Invoice Sheet -->
+      <div class="printable-invoice-sheet" id="printableInvoiceContent">
+        <!-- Renders printable receipt -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Application JS -->
+  <script src="script.js"></script>
+</body>
+</html>
